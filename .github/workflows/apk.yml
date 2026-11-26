@@ -33,7 +33,7 @@ jobs:
           python3 tools/build.py
           rm -rf www && mkdir www && cp -r public/* www/
           rm -f www/sw.js
-          echo "window.LOOKBOOK_CONFIG = {apiBase: \"${API_URL:-https://lookbook-app-zcq4.onrender.com}\", appCode: \"${APP_CODE:-lookbook}\", aiOnDemand: true};" > www/config.js
+          echo "window.LOOKBOOK_CONFIG = {apiBase: \"${API_URL:-https://lookbook-app-zcq4.onrender.com}\", appCode: \"${APP_CODE:-lookbook}\", aiOnDemand: true, noAI: true};" > www/config.js
 
       - name: Criar projeto Android (Capacitor)
         run: |

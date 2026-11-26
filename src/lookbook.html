@@ -788,7 +788,9 @@ const S = {
 };
 const pieces = () => S.mine.length ? S.mine : DEMO;
 /* no app de celular a IA só roda quando a pessoa toca no botão; o resto usa as regras do app (grátis) */
-const AI_ON_DEMAND = !!(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.aiOnDemand);
+/* noAI: versão sem nenhum gasto. Tudo pelas regras do app, sem IA e sem a busca de compras */
+const NO_AI = !!(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.noAI);
+const AI_ON_DEMAND = NO_AI || !!(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.aiOnDemand);
 const byId = id => pieces().find(p => p.id === id);
 const LS = "lookbook.pecas.v1";
 function lsRead(){ try { return JSON.parse(localStorage.getItem(LS) || "[]"); } catch { return []; } }
@@ -1002,7 +1004,7 @@ Traga de 3 a 5 looks diferentes, do melhor para o pior. Notas de 0 a 10 com uma 
 function outfitKey(list, occ){ return list.map(p => p.id).sort().join(",") + "|" + occ; }
 /* nova lista do look depois de uma troca: a mesma regra usada ao aplicar a troca */
 function swapList(list, t){
-  const inn = byId(t.entra); if (!inn) return list;
+  const inn = t._v || byId(t.entra); if (!inn) return list;
   let l = list.filter(p => p.id !== t.sai && p.categoria !== inn.categoria);
   if (inn.categoria === "unica") l = l.filter(p => p.categoria !== "cima" && p.categoria !== "baixo");
   if (inn.categoria === "cima" || inn.categoria === "baixo") l = l.filter(p => p.categoria !== "unica");
@@ -1379,7 +1381,7 @@ function openEditor(orig, isNew){
     if (S.sample && S.imgMax && AI_ON_DEMAND) aiLine.replaceChildren(h("div",{class:"note"}, "Cor detectada da foto. Escolha o tipo, o tecido e o estilo abaixo, ou ",
       h("button",{class:"btn sm",type:"button",text:"Preencher com IA",onclick:runTag})));
     else if (S.sample && S.imgMax) runTag();
-    else aiLine.replaceChildren(h("div",{class:"note warn",text:"Cor detectada da foto. A IA não está disponível aqui, então preencha o tipo e o estilo."}));
+    else aiLine.replaceChildren(NO_AI ? h("div",{class:"note",text:"Cor detectada da foto. Escolha o tipo, o tecido e o estilo abaixo."}) : h("div",{class:"note warn",text:"Cor detectada da foto. A IA não está disponível aqui, então preencha o tipo e o estilo."}));
   }
 }
 function clearRefs(id){
@@ -1422,7 +1424,7 @@ function renderCombinar(){
     if (!S.comb.ai.length) aiSec.append(h("div",{class:"note warn",text:"A IA não encontrou combinações completas. Cadastre mais peças de outras categorias."}));
     S.comb.ai.forEach(l => aiSec.append(lookCard(l)));
   } else aiSec.append(h("p",{class:"why",text: S.sample ? "Toque em “Completar com IA” para a IA terminar o look com as peças escolhidas." : "A IA não está disponível aqui. Veja abaixo as sugestões pelas regras de cor e estilo."}));
-  const blocks = [aiSec];
+  const blocks = NO_AI ? (picked.length ? [] : [h("p",{class:"why",text:"Toque numa ou mais peças acima e o app sugere as melhores combinações pelas regras de cor, tecido, estilo e ocasião."})]) : [aiSec];
   if (picked.length){
     const {looks:local, err} = combos(S.comb.sel, S.comb.occ);
     const locSec = h("div",{class:"looks"}, h("div",{class:"section-head"}, h("h3",{text:"Sugestões rápidas"}), h("span",{class:"tag",text:"Regras de cor"})));
@@ -1504,7 +1506,7 @@ function missingCats(picked){
 function renderShop(picked){
   const box = $("#comb-shop"); if (!box) return;
   const head = h("div",{class:"section-head"}, h("h3",{text:"Comprar para completar"}), h("span",{class:"tag ai",text:"Novo"}));
-  const intro = h("p",{class:"why",text: picked.length ? "A IA sugere produtos reais (marca e modelo) que você não tem para fechar este look, dentro da sua faixa de preço, com links de busca do menor preço." : "Escolha algumas peças acima, ou peça direto: a IA sugere peças novas e eu monto a busca do menor preço."});
+  const intro = NO_AI ? h("p",{class:"why",text: picked.length ? "O app testa peças que você não tem contra o seu look, pelas regras de cor, tecido e estilo, e monta a busca do menor preço na sua faixa." : "Escolha algumas peças acima para o app achar o que combina. Sem peças escolhidas, ele sugere peças coringa."}) : h("p",{class:"why",text: picked.length ? "A IA sugere produtos reais (marca e modelo) que você não tem para fechar este look, dentro da sua faixa de preço, com links de busca do menor preço." : "Escolha algumas peças acima, ou peça direto: a IA sugere peças novas e eu monto a busca do menor preço."});
   if (!S.shop.open){
     box.replaceChildren(head, intro, h("button",{class:"btn yellow block",type:"button",text:"Encontrar peças e preços",onclick:() => { S.shop.open = true; renderShop(picked); }}));
     return;
@@ -1518,19 +1520,20 @@ function renderShop(picked){
   min.addEventListener("change", () => { S.shop.min = min.value; }); max.addEventListener("change", () => { S.shop.max = max.value; });
   const presets = h("div",{class:"chips"}, [["","Até 100","100"],["100","100 a 250","250"],["250","250 a 500","500"],["500","Acima de 500",""]].map(([a,l,b]) =>
     h("button",{class:"chip",type:"button","aria-pressed":String(S.shop.min===a && S.shop.max===b),text:l,onclick:() => { S.shop.min = a; S.shop.max = b; renderShop(picked); }})));
-  const go = h("button",{class:"btn primary block",type:"button",text: S.shop.state === "loading" ? "Procurando…" : "Sugerir peças para comprar", disabled: S.shop.state === "loading" || !S.sample || null, onclick:() => { S.shop.min = min.value; S.shop.max = max.value; runShopAI(picked); }});
+  const go = h("button",{class:"btn primary block",type:"button",text: S.shop.state === "loading" ? "Procurando…" : "Sugerir peças para comprar", disabled: S.shop.state === "loading" || (!S.sample && !NO_AI) || null, onclick:() => { S.shop.min = min.value; S.shop.max = max.value; NO_AI ? runShopRules(picked) : runShopAI(picked); }});
   const parts = [head, intro,
     h("div",{class:"field"}, h("span",{class:"lab",text:"Tipo de peça"}), catRow),
     h("div",{class:"field"}, h("span",{class:"lab",text:"Faixa de preço (R$)"}), h("div",{class:"two"}, min, max), presets),
     h("div",{class:"field"}, h("span",{class:"lab",text:"Moda"}), genRow),
     go];
-  if (!S.sample) parts.push(h("div",{class:"note warn",text:"A IA não está disponível nesta visualização, então não dá para sugerir peças agora."}));
+  if (!S.sample && !NO_AI) parts.push(h("div",{class:"note warn",text:"A IA não está disponível nesta visualização, então não dá para sugerir peças agora."}));
   if (S.shop.state === "loading") parts.push(h("div",{class:"thinking"}, h("span",{class:"spin"}), "Pensando em peças que combinam com o seu look…", h("button",{class:"btn sm",type:"button",text:"Parar",onclick:() => S.shop.ctl && S.shop.ctl.abort()})));
   if (S.shop.err) parts.push(h("div",{class:"note warn",text:S.shop.err}));
   if (S.shop.state === "done"){
     if (!S.shop.items.length) parts.push(h("div",{class:"note warn",text:"Não veio nenhuma sugestão. Tente outra faixa de preço ou outro tipo de peça."}));
     S.shop.items.forEach(it => parts.push(shopCard(it)));
-    if (S.shop.items.length) parts.push(h("p",{class:"fine",text:"Os modelos são produtos reais escolhidos pela IA, mas os preços são estimativas. O app não consegue abrir as lojas por dentro, então o preço de hoje, a disponibilidade e as fotos aparecem nos links, já ordenados do mais barato quando a loja permite."}));
+    if (S.shop.items.length && NO_AI) parts.push(h("p",{class:"fine",text:"As sugestões vêm das regras do app, sem marca específica. Os links abrem as lojas já filtradas pela sua faixa de preço e ordenadas do mais barato, quando a loja permite."}));
+    else if (S.shop.items.length) parts.push(h("p",{class:"fine",text:"Os modelos são produtos reais escolhidos pela IA, mas os preços são estimativas. O app não consegue abrir as lojas por dentro, então o preço de hoje, a disponibilidade e as fotos aparecem nos links, já ordenados do mais barato quando a loja permite."}));
   }
   box.replaceChildren(...parts);
 }
@@ -1541,17 +1544,17 @@ function shopCard(it){
     h("div",{class:"shop-top"},
       (() => { const t = h("div",{class:"thumb shop-thumb"}); t.innerHTML = garmentSVG(it.categoria, it.cor); return t; })(),
       h("div",{class:"shop-info"},
-        h("span",{class:"brand-tag",text:it.marca}),
-        h("b",{text:`${it.modelo}${it.corNome ? " · " + it.corNome : ""}`}),
+        h("span",{class:"brand-tag",text:it.marca || "Sugestão"}),
+        h("b",{text: it.modelo ? `${it.modelo}${it.corNome ? " · " + it.corNome : ""}` : it.nome}),
         h("span",{class:"shop-meta"}, h("i",{class:"dot",style:`background:${it.cor}`}), `${colorName(it.cor)} · ${CATN[it.categoria]}`),
-        h("span",{class:"shop-price",text:`${money(it.precoMin)} a ${money(it.precoMax)}`}),
+        it.precoMax ? h("span",{class:"shop-price",text:`${money(it.precoMin)} a ${money(it.precoMax)}`}) : null,
         it.nota ? h("span",{class:"shop-meta"}, "Nota do look com ela: ", h("b",{class:"score "+scoreClass(it.nota),style:"font-size:13px;padding:0 6px",text:fmt(it.nota)})) : null)),
     it.descricao ? h("p",{class:"why",text:it.descricao}) : null,
     it.porque ? h("p",{class:"why",style:"font-weight:600",text:it.porque}) : null,
     h("div",{class:"lab",style:"font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase"}, "Buscar menor preço: ", h("span",{style:"text-transform:none;letter-spacing:0;font-weight:500",text:`“${it.termo}”`})),
     h("div",{class:"row"},
       h("a",{class:"btn sm primary",href:`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.termo)}`,target:"_blank",rel:"noopener noreferrer",text:"Ver fotos do produto"}),
-      h("span",{class:"fine",text: it.certeza === "alta" ? "Modelo e cor confirmados pela IA" : "Confira a cor nas fotos"})),
+      h("span",{class:"fine",text: it.certeza === "alta" ? "Modelo e cor confirmados pela IA" : it.certeza === "regras" ? "Exemplos de como fica essa peça" : "Confira a cor nas fotos"})),
     h("div",{class:"store-links"}, storeLinks(it.termo, S.shop.min, S.shop.max).map(([n,u,d]) => h("a",{class:"store",href:u,target:"_blank",rel:"noopener noreferrer",title:d}, h("b",{text:n}), h("span",{text:d})))),
     h("div",{class:"row"},
       h("button",{class:"btn sm " + (testing ? "" : "yellow"),type:"button",text: testing ? "Tirar do look" : "Testar no look",onclick:() => {
@@ -1564,6 +1567,47 @@ function shopCard(it){
         catch (e){ toast(saveErrText(e)); }
       }}),
       h("button",{class:"btn sm",type:"button",text:"Copiar busca",onclick:() => { navigator.clipboard && navigator.clipboard.writeText(it.termo).then(() => toast("Busca copiada"), () => toast(it.termo)); }})));
+}
+/* ---------- compras sem IA: catálogo fixo de peças, ranqueadas pela mesma nota de regras ---------- */
+const SHOP_CAT = {
+  cima: [["Camiseta básica","branca","#f5f5f2","Básico","Algodão","Leve"],["Camiseta básica","preta","#1a1a1a","Básico","Algodão","Leve"],["Camiseta básica","cinza mescla","#9a9ca2","Básico","Algodão","Leve"],
+    ["Camisa de linho","branca","#f2efe6","Esporte fino","Linho","Leve"],["Camisa oxford","azul claro","#9cc6e8","Esporte fino","Algodão","Médio"],["Polo","azul marinho","#1c2a48","Casual","Malha","Médio"],
+    ["Camiseta","verde oliva","#5f6b3a","Casual","Algodão","Leve"],["Camisa social","branca","#ffffff","Social","Algodão","Leve"],["Regata","off white","#ece6d8","Praia","Algodão","Leve"],["Camiseta","bege","#d6c4a3","Básico","Algodão","Leve"]],
+  camada: [["Jaqueta jeans","azul","#4b6c95","Casual","Jeans","Pesado"],["Blazer","azul marinho","#1c2a48","Social","Lã / tricô","Médio"],["Moletom","cinza","#8f9198","Casual","Moletom","Pesado"],
+    ["Cardigã","bege","#cdb991","Esporte fino","Lã / tricô","Médio"],["Jaqueta bomber","preta","#151515","Streetwear","Nylon","Médio"],["Sobrecamisa","verde oliva","#6b6b3a","Casual","Sarja","Médio"],["Corta-vento","preto","#202020","Esporte","Nylon","Leve"]],
+  baixo: [["Calça jeans","azul escuro","#2f4566","Casual","Jeans","Pesado"],["Calça jeans","azul claro","#7d9cc0","Casual","Jeans","Médio"],["Calça chino","bege","#ab9566","Esporte fino","Sarja","Médio"],
+    ["Calça de alfaiataria","preta","#141414","Social","Viscose","Médio"],["Calça de alfaiataria","cinza","#6e7078","Social","Lã / tricô","Médio"],["Calça de linho","areia","#d8cbb0","Esporte fino","Linho","Leve"],
+    ["Bermuda","bege","#b9a37a","Casual","Sarja","Leve"],["Bermuda jeans","azul","#5a7aa5","Casual","Jeans","Médio"],["Calça cargo","verde oliva","#5f6b3a","Streetwear","Sarja","Médio"],["Calça jogger","preta","#1b1b1b","Esporte","Moletom","Médio"]],
+  unica: [["Vestido midi","preto","#151515","Elegante / festa","Viscose","Leve"],["Vestido","branco","#f5f3ee","Casual","Algodão","Leve"],["Macacão","azul marinho","#1c2a48","Casual","Viscose","Leve"],["Vestido","verde oliva","#5f6b3a","Casual","Linho","Leve"]],
+  calcado: [["Tênis","branco","#f5f5f2","Casual","Couro","Médio"],["Tênis","preto","#1a1a1a","Streetwear","Couro","Médio"],["Mocassim","marrom","#7a4a2a","Esporte fino","Couro","Médio"],
+    ["Bota","marrom","#634330","Casual","Couro","Pesado"],["Sapato social","preto","#121212","Social","Couro","Médio"],["Sandália","caramelo","#a8662e","Praia","Couro","Leve"],["Tênis de corrida","cinza","#8f9198","Esporte","Nylon","Leve"],["Tênis de lona","off white","#ece6d8","Básico","Algodão","Leve"]],
+  acessorio: [["Cinto de couro","marrom","#5a3a22","Esporte fino","Couro","Médio"],["Cinto de couro","preto","#151515","Social","Couro","Médio"],["Relógio","prata","#b8bcc2","Esporte fino","Outro","Médio"],
+    ["Boné","preto","#1a1a1a","Streetwear","Algodão","Leve"],["Óculos de sol","preto","#111111","Casual","Outro","Leve"],["Bolsa","caramelo","#a8662e","Casual","Couro","Médio"]],
+};
+const GEN_WORD = {masculina:"masculino", feminina:"feminino", unissex:"unissex"};
+function runShopRules(picked){
+  const cats = S.shop.cat === "auto" ? missingCats(picked).slice(0, 2) : [S.shop.cat];
+  const occ = S.comb.occ, owned = pieces();
+  const base = ruleScore(picked, occ).nota;
+  const cands = [];
+  for (const c of cats) for (const [tipo, corNome, cor, estilo, tecido, peso] of (SHOP_CAT[c] || [])){
+    const L = lab(cor);
+    /* pula o que ele já tem praticamente igual */
+    if (owned.some(p => p.categoria === c && isHex(pieceHex(p)) && Math.hypot(...lab(pieceHex(p)).map((v,i) => v - L[i])) < 12)) continue;
+    const v = {id:"novo-" + c + cands.length, nome:`${tipo} ${corNome}`, categoria:c, cor, estampa:"Lisa", estilo, clima:"Qualquer", tecido, peso};
+    const list = picked.length ? swapList(picked, {sai:null, entra:null, _v:v}) : [v];
+    cands.push({v, nota: ruleScore(list, occ).nota});
+  }
+  cands.sort((a,b) => b.nota - a.nota || (a.v.categoria === cats[0] ? -1 : 1));
+  const gen = GEN_WORD[S.shop.genero] || "";
+  S.shop.items = cands.slice(0, 5).map(({v, nota}) => ({
+    id: v.id, categoria: v.categoria, marca: "", modelo: "", corNome: "", nome: v.nome, cor: v.cor, certeza: "regras",
+    descricao: `${v.tecido}, tecido ${v.peso.toLowerCase()}, estilo ${v.estilo.toLowerCase()}.`,
+    termo: `${v.nome} ${gen}`.trim(), precoMin: 0, precoMax: 0,
+    porque: picked.length ? (nota > base ? `Sobe a nota do look de ${fmt(base)} para ${fmt(nota)}.` : `Mantém o look equilibrado (nota ${fmt(nota)}).`) : "Peça coringa que combina com quase tudo.",
+    nota: picked.length ? nota : 0 }));
+  S.shop.state = "done"; S.shop.err = "";
+  renderCombinar();
 }
 async function runShopAI(picked){
   if (!S.sample) return;
@@ -1713,7 +1757,7 @@ S.ev.slots = {cima:"demo1", baixo:"demo7", calcado:"demo11", camada:"demo5"};
 go(location.hash.slice(1) || "guarda-roupa");
 renderAll();
 initStore();
-safeUse("sample").then(async s => {
+(NO_AI ? Promise.resolve(null) : safeUse("sample")).then(async s => {
   S.sample = s;
   if (s){ try { const l = await s.limits(); S.imgMax = l && l.images ? l.images.maxCount : 0; } catch { S.imgMax = 0; } }
   renderAll();
