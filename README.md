@@ -23,4 +23,4 @@ Guarda-roupa com IA: cadastre as peças, monte combinações e receba nota para 
 | `LIMIT_PER_IP_HOUR` / `LIMIT_PER_DAY` | limites de uso (padrão 60 por hora por aparelho, 300 por dia no total) |
 
 ## Variáveis do GitHub (para o APK)
-Em Settings > Secrets and variables > Actions > Variables: `API_URL` = endereço do Render (ex.: `https://lookbook-xxxx.onrender.com`).
+Em Settings > Secrets and variables > Actions > Variables: `API_URL` = endereço do Render (hoje `https://lookbook-app-zcq4.onrender.com`, já usado por padrão).
