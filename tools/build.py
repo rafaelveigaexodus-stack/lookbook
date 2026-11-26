@@ -10,10 +10,6 @@ REPL = [
     ("Salvar imagem não está disponível nesta visualização.", "Não deu para salvar a imagem neste aparelho."),
     ("A IA não está disponível nesta visualização, então não dá para sugerir peças agora.", "A IA está fora do ar agora, então não dá para sugerir peças."),
     ('<meta name="claude:viewport-fit-sides" content="cover">', ""),
-    # versão sem IA (custo zero)
-    ("vários acessórios. A IA completa o que faltar.", "vários acessórios. O app sugere o que combina pelas regras de cor, tecido e estilo."),
-    ("Escolha as peças. A IA dá nota para cores, texturas, estilo, proporção e ocasião, e a nota final sai da média. O mesmo look sempre recebe a mesma nota.",
-     "Escolha as peças. O app dá a nota pelas regras de cores, texturas e peso dos tecidos, estilo, ocasião e clima. O mesmo look sempre recebe a mesma nota."),
 ]
 for a, b in REPL:
     if a not in s:

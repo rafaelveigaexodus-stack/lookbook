@@ -287,7 +287,7 @@ a.btn{text-decoration:none}
     <div>
       <span class="eyebrow">Seu guarda-roupa</span>
       <h1 class="h2">Seu <span class="mark">closet</span></h1>
-      <p class="lead">Fotografe uma ou várias peças de uma vez. O app pega a cor da foto e a IA identifica tipo e estilo.</p>
+      <p class="lead">Fotografe uma ou várias peças de uma vez. O app pega a cor e tira o fundo da foto. Depois é só escolher o tipo, o tecido e o estilo.</p>
     </div>
     <div id="demo-note"></div>
     <div class="toolbar">
@@ -326,7 +326,7 @@ a.btn{text-decoration:none}
       <div class="chips" id="eval-occ" style="margin-top:8px"></div>
     </div>
     <div class="row">
-      <button class="btn primary" id="eval-btn" type="button">Avaliar com IA</button>
+      <button class="btn primary" id="eval-btn" type="button">Calcular nota</button>
       <button class="btn yellow" id="eval-ai-btn" type="button" hidden>Opinião da IA</button>
       <button class="btn" id="eval-clear" type="button">Limpar</button>
     </div>
@@ -807,7 +807,7 @@ const S = {
 const pieces = () => S.mine.length ? S.mine : DEMO;
 /* no app de celular a IA só roda quando a pessoa toca no botão; o resto usa as regras do app (grátis) */
 /* noAI: versão sem nenhum gasto. Tudo pelas regras do app, sem IA e sem a busca de compras */
-const NO_AI = !!(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.noAI);
+const NO_AI = !(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.ai === true); /* IA desligada por padrão: custo zero */
 const AI_ON_DEMAND = NO_AI || !!(window.LOOKBOOK_CONFIG && window.LOOKBOOK_CONFIG.aiOnDemand);
 const byId = id => pieces().find(p => p.id === id);
 const LS = "lookbook.pecas.v1";
@@ -1210,7 +1210,7 @@ $("#file").addEventListener("change", async e => {
 /* ---------- cadastro em lote ---------- */
 async function batchAdd(files){
   const items = files.map(f => ({f, st:"Na fila", p:null}));
-  const qEl = h("div",{class:"queue"}); const head = h("div",{class:"note",text:`Cadastrando ${items.length} peças. A cor sai da foto e a IA identifica o resto. Depois é só tocar numa peça para ajustar.`});
+  const qEl = h("div",{class:"queue"}); const head = h("div",{class:"note",text: NO_AI ? `Cadastrando ${items.length} peças. A cor e o fundo saem da foto. Depois toque em cada peça para escolher o tipo e o estilo.` : `Cadastrando ${items.length} peças. A cor sai da foto e a IA identifica o resto. Depois é só tocar numa peça para ajustar.`});
   const doneBtn = h("button",{class:"btn primary block",type:"button",text:"Aguarde…",disabled:true,onclick:closeSheet});
   const draw = () => qEl.replaceChildren(...items.map(it => h("div",{class:"qi"},
     it.p ? thumbEl(it.p) : h("div",{class:"thumb"}),
