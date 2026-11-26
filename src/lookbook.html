@@ -1506,7 +1506,7 @@ function missingCats(picked){
 function renderShop(picked){
   const box = $("#comb-shop"); if (!box) return;
   const head = h("div",{class:"section-head"}, h("h3",{text:"Comprar para completar"}), h("span",{class:"tag ai",text:"Novo"}));
-  const intro = NO_AI ? h("p",{class:"why",text: picked.length ? "O app testa peças que você não tem contra o seu look, pelas regras de cor, tecido e estilo, e monta a busca do menor preço na sua faixa." : "Escolha algumas peças acima para o app achar o que combina. Sem peças escolhidas, ele sugere peças coringa."}) : h("p",{class:"why",text: picked.length ? "A IA sugere produtos reais (marca e modelo) que você não tem para fechar este look, dentro da sua faixa de preço, com links de busca do menor preço." : "Escolha algumas peças acima, ou peça direto: a IA sugere peças novas e eu monto a busca do menor preço."});
+  const intro = NO_AI ? h("p",{class:"why",text: picked.length ? "O app olha as cores, os tecidos e a ocasião das peças escolhidas, monta as peças que faltam e busca nas lojas pela internet, do menor preço, dentro da sua faixa." : "Escolha algumas peças acima para o app achar o que combina. Sem peças escolhidas, ele sugere peças coringa."}) : h("p",{class:"why",text: picked.length ? "A IA sugere produtos reais (marca e modelo) que você não tem para fechar este look, dentro da sua faixa de preço, com links de busca do menor preço." : "Escolha algumas peças acima, ou peça direto: a IA sugere peças novas e eu monto a busca do menor preço."});
   if (!S.shop.open){
     box.replaceChildren(head, intro, h("button",{class:"btn yellow block",type:"button",text:"Encontrar peças e preços",onclick:() => { S.shop.open = true; renderShop(picked); }}));
     return;
@@ -1532,7 +1532,7 @@ function renderShop(picked){
   if (S.shop.state === "done"){
     if (!S.shop.items.length) parts.push(h("div",{class:"note warn",text:"Não veio nenhuma sugestão. Tente outra faixa de preço ou outro tipo de peça."}));
     S.shop.items.forEach(it => parts.push(shopCard(it)));
-    if (S.shop.items.length && NO_AI) parts.push(h("p",{class:"fine",text:"As sugestões vêm das regras do app, sem marca específica. Os links abrem as lojas já filtradas pela sua faixa de preço e ordenadas do mais barato, quando a loja permite."}));
+    if (S.shop.items.length && NO_AI) parts.push(h("p",{class:"fine",text:"Os preços e as fotos vêm direto das lojas pela internet: cada botão abre a busca já filtrada pela sua faixa de preço e ordenada do mais barato, quando a loja permite."}));
     else if (S.shop.items.length) parts.push(h("p",{class:"fine",text:"Os modelos são produtos reais escolhidos pela IA, mas os preços são estimativas. O app não consegue abrir as lojas por dentro, então o preço de hoje, a disponibilidade e as fotos aparecem nos links, já ordenados do mais barato quando a loja permite."}));
   }
   box.replaceChildren(...parts);
@@ -1551,7 +1551,7 @@ function shopCard(it){
         it.nota ? h("span",{class:"shop-meta"}, "Nota do look com ela: ", h("b",{class:"score "+scoreClass(it.nota),style:"font-size:13px;padding:0 6px",text:fmt(it.nota)})) : null)),
     it.descricao ? h("p",{class:"why",text:it.descricao}) : null,
     it.porque ? h("p",{class:"why",style:"font-weight:600",text:it.porque}) : null,
-    h("div",{class:"lab",style:"font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase"}, "Buscar menor preço: ", h("span",{style:"text-transform:none;letter-spacing:0;font-weight:500",text:`“${it.termo}”`})),
+    h("div",{class:"lab",style:"font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase"}, "Buscar nas lojas: ", h("span",{style:"text-transform:none;letter-spacing:0;font-weight:500",text:`“${it.termo}”`})),
     h("div",{class:"row"},
       h("a",{class:"btn sm primary",href:`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.termo)}`,target:"_blank",rel:"noopener noreferrer",text:"Ver fotos do produto"}),
       h("span",{class:"fine",text: it.certeza === "alta" ? "Modelo e cor confirmados pela IA" : it.certeza === "regras" ? "Exemplos de como fica essa peça" : "Confira a cor nas fotos"})),
@@ -1585,24 +1585,64 @@ const SHOP_CAT = {
     ["Boné","preto","#1a1a1a","Streetwear","Algodão","Leve"],["Óculos de sol","preto","#111111","Casual","Outro","Leve"],["Bolsa","caramelo","#a8662e","Casual","Couro","Médio"]],
 };
 const GEN_WORD = {masculina:"masculino", feminina:"feminino", unissex:"unissex"};
+function hslHex(hh, ss, ll){
+  const k = n => (n + hh/30) % 12, a = ss*Math.min(ll, 1-ll);
+  const f = n => Math.round(255*(ll - a*Math.max(-1, Math.min(k(n)-3, 9-k(n), 1)))).toString(16).padStart(2,"0");
+  return "#" + f(0) + f(8) + f(4);
+}
+/* cores candidatas tiradas do próprio look: neutros que acompanham, a complementar e a vizinha da cor forte, e um tom da mesma família */
+function lookColors(picked){
+  const out = [["#f5f5f2","porque branco acompanha qualquer cor"],["#1a1a1a","porque preto dá contraste e é coringa"],["#8f9198","porque cinza equilibra o look"],["#c9b48f","porque bege suaviza o conjunto"],["#1c2a48","porque azul-marinho é um neutro escuro elegante"]];
+  const hexes = picked.map(p => pieceHex(p)).filter(isHex);
+  const vivid = hexes.filter(x => !isNeutral(x));
+  for (const v of vivid.slice(0, 2)){
+    const [hh, ss] = hsl(v), nm = colorName(v).toLowerCase();
+    out.push([hslHex((hh+180)%360, Math.min(ss, .45), .42), `porque é a cor complementar de ${nm}, de forma discreta`]);
+    out.push([hslHex((hh+30)%360, Math.min(ss, .5), .45), `porque é vizinha de ${nm} no círculo de cores`]);
+    out.push([hslHex(hh, Math.min(ss, .35), .78), `porque é um tom claro da mesma família de ${nm}`]);
+  }
+  if (!vivid.length && hexes.length){
+    out.push(["#4b6c95","porque um azul traz cor sem brigar com os neutros do look"]);
+    out.push(["#6b6b3a","porque verde-oliva dá personalidade a looks neutros"]);
+    out.push(["#8c3b2e","porque um tom terroso aquece os neutros"]);
+  }
+  return out;
+}
 function runShopRules(picked){
   const cats = S.shop.cat === "auto" ? missingCats(picked).slice(0, 2) : [S.shop.cat];
-  const occ = S.comb.occ, owned = pieces();
+  const occ = S.comb.occ, alvo = OCASIOES[occ], owned = pieces();
   const base = ruleScore(picked, occ).nota;
+  const pesosLook = picked.filter(p => p.categoria !== "calcado").map(p => p.peso).filter(Boolean);
+  const pesadoNoLook = pesosLook.includes("Pesado");
+  const cores = lookColors(picked);
   const cands = [];
-  for (const c of cats) for (const [tipo, corNome, cor, estilo, tecido, peso] of (SHOP_CAT[c] || [])){
-    const L = lab(cor);
-    /* pula o que ele já tem praticamente igual */
-    if (owned.some(p => p.categoria === c && isHex(pieceHex(p)) && Math.hypot(...lab(pieceHex(p)).map((v,i) => v - L[i])) < 12)) continue;
-    const v = {id:"novo-" + c + cands.length, nome:`${tipo} ${corNome}`, categoria:c, cor, estampa:"Lisa", estilo, clima:"Qualquer", tecido, peso};
-    const list = picked.length ? swapList(picked, {sai:null, entra:null, _v:v}) : [v];
-    cands.push({v, nota: ruleScore(list, occ).nota});
+  for (const c of cats){
+    const tipos = new Map();
+    for (const row of (SHOP_CAT[c] || [])) if (!tipos.has(row[0] + row[3])) tipos.set(row[0] + row[3], row);
+    for (const [tipo, , , estilo, tecido, peso] of tipos.values()){
+      /* ocasião: só estilos que combinam com ela */
+      if (alvo != null && Math.abs((ESTILOS[estilo] ?? 2) - alvo) > 1) continue;
+      for (const [cor, porqueCor] of cores){
+        const L = lab(cor);
+        if (owned.some(p => p.categoria === c && isHex(pieceHex(p)) && Math.hypot(...lab(pieceHex(p)).map((v,i) => v - L[i])) < 12)) continue;
+        const fem = /a$/.test(tipo.split(" ")[0]) && !/^(Polo)/.test(tipo);
+        const nomeCor = colorName(cor).toLowerCase().replace(/\b(branc|pret|amarel|vermelh|rox|escur|clar|dourad|prateado|alaranjad|avermelhad|esverdead|azulad|acinzentad|arroxead)o\b/g, (m, r) => fem ? r + "a" : m);
+        const v = {id:"novo-" + c + cands.length, nome:`${tipo} ${nomeCor}`, categoria:c, cor, estampa:"Lisa", estilo, clima:"Qualquer", tecido, peso};
+        const list = picked.length ? swapList(picked, {_v:v}) : [v];
+        const nota = ruleScore(list, occ).nota;
+        const porqueTecido = c === "calcado" || c === "acessorio" ? "" : pesadoNoLook && peso !== "Pesado" ? `${tecido} (tecido ${peso.toLowerCase()}) equilibra as peças encorpadas do look` : !pesadoNoLook && peso === "Pesado" && pesosLook.length ? `${tecido} dá textura a um look leve` : `${tecido} (tecido ${peso.toLowerCase()}) combina com o peso das outras peças`;
+        cands.push({v, nota, porque: [`Cor ${nomeCor}, ${porqueCor}`, porqueTecido, alvo != null ? `estilo ${estilo.toLowerCase()} serve para ${occ.toLowerCase()}` : ""].filter(Boolean).join("; ") + "."});
+      }
+    }
   }
-  cands.sort((a,b) => b.nota - a.nota || (a.v.categoria === cats[0] ? -1 : 1));
+  cands.sort((a,b) => b.nota - a.nota);
+  /* no máximo 2 sugestões do mesmo tipo de peça, para variar */
+  const seen = {}, top = [];
+  for (const x of cands){ const t = x.v.nome.split(" ")[0] + x.v.categoria; if ((seen[t] = (seen[t]||0) + 1) > 2) continue; if (top.some(y => y.v.nome === x.v.nome)) continue; top.push(x); if (top.length >= 6) break; }
   const gen = GEN_WORD[S.shop.genero] || "";
-  S.shop.items = cands.slice(0, 5).map(({v, nota}) => ({
+  S.shop.items = top.map(({v, nota, porque}) => ({
     id: v.id, categoria: v.categoria, marca: "", modelo: "", corNome: "", nome: v.nome, cor: v.cor, certeza: "regras",
-    descricao: `${v.tecido}, tecido ${v.peso.toLowerCase()}, estilo ${v.estilo.toLowerCase()}.`,
+    descricao: porque,
     termo: `${v.nome} ${gen}`.trim(), precoMin: 0, precoMax: 0,
     porque: picked.length ? (nota > base ? `Sobe a nota do look de ${fmt(base)} para ${fmt(nota)}.` : `Mantém o look equilibrado (nota ${fmt(nota)}).`) : "Peça coringa que combina com quase tudo.",
     nota: picked.length ? nota : 0 }));
