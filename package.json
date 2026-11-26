@@ -1,0 +1,15 @@
+{
+  "name": "lookbook",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lookbook: guarda-roupa com IA (PWA + servidor de IA)",
+  "scripts": {
+    "start": "node server.js",
+    "build": "python3 tools/build.py"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0"
+  }
+}

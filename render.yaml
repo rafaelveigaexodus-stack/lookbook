@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: lookbook
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_CODE
+        value: lookbook
