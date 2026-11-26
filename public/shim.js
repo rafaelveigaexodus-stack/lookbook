@@ -69,6 +69,15 @@
   /* ---------- salvar imagem ---------- */
   const downloads = {
     async save({filename, data}){
+      /* dentro do APK: grava o arquivo e abre o menu de compartilhar (Drive, WhatsApp, Arquivos...) */
+      const P = window.Capacitor && window.Capacitor.Plugins;
+      if (P && P.Filesystem && P.Share){
+        const b64 = await toB64(data);
+        const w = await P.Filesystem.writeFile({path: filename, data: b64, directory: "CACHE"});
+        try { await P.Share.share({title: filename, files: [w.uri]}); }
+        catch (e){ if (/cancel/i.test(String(e && (e.message || e)))) throw err("declined"); throw e; }
+        return;
+      }
       const file = new File([data], filename, {type: data.type || "image/jpeg"});
       if (navigator.canShare && navigator.canShare({files:[file]})){
         try { await navigator.share({files:[file], title: "Meu look"}); return; }

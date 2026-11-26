@@ -257,6 +257,8 @@ a.btn{text-decoration:none}
 .crit-row b{font-variant-numeric:tabular-nums;text-align:right}
 .crit-bar{height:12px;border:2px solid var(--line);border-radius:999px;background:var(--surface-2);overflow:hidden}
 .crit-bar i{display:block;height:100%;border-right:2px solid var(--line)}
+.backup{display:flex;flex-direction:column;gap:10px;padding:14px;margin-top:8px}
+.backup .why{margin:4px 0 0}
 </style>
 
 <header class="top"><div class="wrap">
@@ -277,6 +279,14 @@ a.btn{text-decoration:none}
       <button class="btn sm" id="sel-toggle" type="button">Selecionar</button>
     </div>
     <div class="grid" id="grid"></div>
+    <div class="backup bx">
+      <div><b>Backup das peças</b><p class="why">Salve um arquivo com todas as suas peças e fotos. Se trocar de celular ou reinstalar o app, é só importar.</p></div>
+      <div class="row">
+        <button class="btn sm mint" id="bk-export" type="button">Exportar backup</button>
+        <button class="btn sm" id="bk-import" type="button">Importar backup</button>
+        <input type="file" id="bk-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
   </section>
 
   <section class="view" id="v-combinar" hidden>
@@ -1768,6 +1778,31 @@ function openPicker(cat){
     S.ev.slots[cat] ? h("button",{class:"btn",type:"button",text:"Deixar sem",onclick:() => { setSlot(cat, null); closeSheet(); }}) : null,
     h("button",{class:"btn yellow",type:"button",text:"Cadastrar nova peça",onclick:() => { closeSheet(); go("guarda-roupa"); pickPhoto(); }})));
 }
+/* ---------- backup ---------- */
+$("#bk-export").addEventListener("click", async () => {
+  if (!S.mine.length){ toast("Você ainda não tem peças para salvar."); return; }
+  const dl = await safeUse("downloads");
+  if (!dl){ toast("Salvar arquivo não está disponível aqui."); return; }
+  const data = new Blob([JSON.stringify({app:"lookbook", versao:1, criado:new Date().toISOString(), pecas:S.mine})], {type:"application/json"});
+  const d = new Date(), nome = `lookbook-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.json`;
+  try { await dl.save({filename:nome, data}); toast(`Backup com ${S.mine.length} peças pronto.`); }
+  catch (e){ if (e && e.code === "declined") return; toast("Não consegui salvar o backup" + (e && e.code ? ` (${e.code})` : "") + "."); }
+});
+$("#bk-import").addEventListener("click", () => { const f = $("#bk-file"); f.value = ""; f.click(); });
+$("#bk-file").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  let list;
+  try { const j = JSON.parse(await f.text()); list = Array.isArray(j) ? j : j && Array.isArray(j.pecas) ? j.pecas : null; } catch { list = null; }
+  if (!list){ toast("Esse arquivo não é um backup do Lookbook."); return; }
+  const have = new Set(S.mine.map(p => p.id)); let ok = 0, skip = 0;
+  for (const p of list){
+    if (!p || typeof p !== "object" || !p.id || !CATN[p.categoria]){ skip++; continue; }
+    if (have.has(p.id)){ skip++; continue; }
+    try { await savePiece({...p, demo:undefined}); ok++; } catch { skip++; }
+  }
+  renderAll();
+  toast(ok ? `${ok} peças importadas${skip ? ` (${skip} já existiam ou foram puladas)` : ""}.` : "Nenhuma peça nova no backup.");
+});
 $("#eval-clear").addEventListener("click", () => { S.ev.slots = {}; S.ev.res = null; S.ev.state = "idle"; S.ev.err = ""; renderAvaliar(); });
 async function runEval(useAI){
   const list = evalList(); if (list.length < 2) return;
