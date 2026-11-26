@@ -1,0 +1,32 @@
+# Verificação manual: o site abre, a IA responde e o APK baixa. Não mostra a chave.
+name: Verificar app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar
+        env:
+          URL: ${{ vars.API_URL || 'https://lookbook-app-zcq4.onrender.com' }}
+        run: |
+          set -u
+          ok=1
+          echo "== Servidor (espera até 3 min se estiver dormindo)"
+          for i in $(seq 1 18); do curl -fsS -m 20 "$URL/api/health" && break; sleep 10; done
+          echo
+          health=$(curl -fsS -m 30 "$URL/api/health" || echo '{}')
+          echo "$health" | grep -q '"ok":true' && echo "OK servidor no ar" || { echo "FALHA servidor"; ok=0; }
+          echo "$health" | grep -q '"ai":true' && echo "OK chave da API configurada" || { echo "FALHA chave ANTHROPIC_API_KEY ausente"; ok=0; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$URL/"); [ "$code" = 200 ] && echo "OK página do app" || { echo "FALHA página do app ($code)"; ok=0; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$URL/manifest.webmanifest"); [ "$code" = 200 ] && echo "OK manifest (instalar no iPhone)" || { echo "FALHA manifest ($code)"; ok=0; }
+          echo "== Teste da IA"
+          resp=$(curl -s -m 120 -X POST "$URL/api/ai" -H 'Content-Type: application/json' -H 'X-App-Code: lookbook' \
+            -d '{"prompt":"Teste do app. Responda com o JSON {\"ok\": true, \"frase\": \"<uma frase curta sobre combinar camisa azul com calça cinza>\"}"}')
+          echo "$resp"
+          echo "$resp" | grep -q '"result"' && echo "OK IA respondeu" || { echo "FALHA IA"; ok=0; }
+          echo "== APK"
+          code=$(curl -s -L -o /dev/null -w '%{http_code}' -m 60 "https://github.com/${{ github.repository }}/releases/download/apk-latest/lookbook.apk"); [ "$code" = 200 ] && echo "OK APK baixa" || { echo "FALHA APK ($code)"; ok=0; }
+          [ "$ok" = 1 ]
