@@ -18,7 +18,7 @@ Guarda-roupa com IA: cadastre as peças, monte combinações e receba nota para 
 |---|---|
 | `ANTHROPIC_API_KEY` | sua chave da API (obrigatória para a IA) |
 | `APP_CODE` | código que o app manda em cada pedido (padrão `lookbook`) |
-| `AI_MODEL` | modelo (padrão `claude-opus-5-5`) |
+| `AI_MODEL` | modelo (padrão `claude-haiku-5-5`, o mais barato) |
 | `AI_EFFORT` | esforço do modelo (padrão `low`) |
 | `LIMIT_PER_IP_HOUR` / `LIMIT_PER_DAY` | limites de uso (padrão 60 por hora por aparelho, 300 por dia no total) |
 

@@ -9,7 +9,8 @@ import Anthropic from "@anthropic-ai/sdk";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(here, "public");
 const PORT = Number(process.env.PORT) || 3000;
-const MODEL = process.env.AI_MODEL || "claude-opus-5-5";
+// Haiku 5.5: o modelo mais barato (cerca de 1 centavo de real por análise com fotos). Troque por AI_MODEL no Render se quiser outro.
+const MODEL = process.env.AI_MODEL || "claude-haiku-5-5";
 const EFFORT = process.env.AI_EFFORT || "low";
 const APP_CODE = process.env.APP_CODE || "";            // se definido, o app precisa mandar o mesmo código
 const PER_IP_HOUR = Number(process.env.LIMIT_PER_IP_HOUR) || 60;
@@ -66,11 +67,12 @@ async function handleAi(req, res){
     .filter(i => i && IMG.has(i.media_type) && typeof i.data === "string")
     .map(i => ({ type: "image", source: { type: "base64", media_type: i.media_type, data: i.data } }));
   try {
+    // fallback automático no servidor só existe para os modelos Opus/Sonnet/Fable
+    const withFallback = !MODEL.startsWith("claude-haiku");
     const msg = await client.beta.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      ...(withFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
       output_config: { effort: EFFORT },
       system: "Você é o assistente de moda do app Lookbook. Responda sempre e somente com um único objeto JSON válido, sem texto antes ou depois e sem blocos de código.",
       messages: [{ role: "user", content: [...images, { type: "text", text: prompt }] }],
