@@ -59,7 +59,17 @@ jobs:
           KS: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
           mkdir -p ~/.android
-          if [ -n "$KS" ]; then echo "$KS" | base64 -d > ~/.android/debug.keystore; echo "usando a chave fixa do repositório"; else echo "::warning::Sem o segredo ANDROID_DEBUG_KEYSTORE_B64: o APK sai com chave nova e não atualiza por cima"; fi
+          if [ -n "$KS" ]; then
+            # aceita base64 puro ou a saída do certutil do Windows (linhas -----BEGIN/END-----)
+            printf '%s' "$KS" | grep -v -- '-----' | tr -d ' \r\n\t' | base64 -d > ~/.android/debug.keystore
+            if keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null 2>&1; then
+              echo "usando a chave fixa do repositório"
+            else
+              echo "::error::O segredo ANDROID_DEBUG_KEYSTORE_B64 não é uma chave válida (senha android, alias androiddebugkey)"; exit 1
+            fi
+          else
+            echo "::warning::Sem o segredo ANDROID_DEBUG_KEYSTORE_B64: o APK sai com chave nova e não atualiza por cima"
+          fi
 
       - name: Número de versão
         run: |
@@ -73,6 +83,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/lookbook.apk"
+          echo "Impressão digital da assinatura (deve ser sempre a mesma):"
+          "$ANDROID_HOME"/build-tools/$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)/apksigner verify --print-certs "$GITHUB_WORKSPACE/lookbook.apk" | grep -i "SHA-256"
 
       - uses: actions/upload-artifact@v4
         with:
