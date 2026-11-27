@@ -58,12 +58,15 @@ jobs:
         env:
           KS: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
-          mkdir -p ~/.android
+          K=cap/android/app/lookbook.keystore
           if [ -n "$KS" ]; then
             # aceita base64 puro ou a saída do certutil do Windows (linhas -----BEGIN/END-----)
-            printf '%s' "$KS" | grep -v -- '-----' | tr -d ' \r\n\t' | base64 -d > ~/.android/debug.keystore
-            if keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null 2>&1; then
+            printf '%s' "$KS" | grep -v -- '-----' | tr -d ' \r\n\t' | base64 -d > "$K"
+            if keytool -list -keystore "$K" -storepass android -alias androiddebugkey > /dev/null 2>&1; then
               echo "usando a chave fixa do repositório"
+              # assina a versão debug com essa chave, de forma explícita
+              sed -i '0,/^android {/s//android {\n    signingConfigs {\n        debug {\n            storeFile file("lookbook.keystore")\n            storePassword "android"\n            keyAlias "androiddebugkey"\n            keyPassword "android"\n        }\n    }/' cap/android/app/build.gradle
+              grep -n -A6 "signingConfigs" cap/android/app/build.gradle
             else
               echo "::error::O segredo ANDROID_DEBUG_KEYSTORE_B64 não é uma chave válida (senha android, alias androiddebugkey)"; exit 1
             fi
